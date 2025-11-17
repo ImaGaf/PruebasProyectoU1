@@ -21,9 +21,11 @@ app.use(express.json());
 
 app.use(basicAuth);
 
-
+app.use("/barroco/categories", require("./routes/categoryRoutes"));
+app.use("/barroco/cart-items", require("./routes/cartItemRoutes"));
+app.use("/barroco/products", require("./routes/productRoutes"));
 app.use("/barroco/customers", require("./routes/customerRoutes"));
-
+app.use("/barroco/shoppingCart", require('./routes/shoppingCartRoutes'));
 
 app.get("/", (req, res) => {
   res.send("API RESTful de Barroco funcionando correctamente");

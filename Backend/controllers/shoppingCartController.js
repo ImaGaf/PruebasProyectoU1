@@ -1,4 +1,6 @@
-const shooppingCArt=require("../models/shoppingCart");
+
+const ShoppingCart = require('../models/shoppingCart');
+
 
 exports.create = async (req, res) => {
   try {
@@ -11,19 +13,26 @@ exports.create = async (req, res) => {
   }
 };
 
-exports.getAll=async(req,res)=>{
-    const cart=await hooppingCArt.find();
+exports.getAll = async (req, res) => {
+  const carts = await ShoppingCart.find();
+  res.json(carts);
 };
 
-exports.update=async(req,res)=>{
-    const cart=await shooppingCArt.findByIdAndUpdate(
-            {idShoppingCart:req.params.idShoppingCart},
-            req.body,
-            {new:true}
-    )
+exports.getById = async (req, res) => {
+  const cart = await ShoppingCart.findOne({ idShoppingCart: req.params.id });
+  if (!cart) return res.status(404).json({ error: 'Not found' });
+  res.json(cart);
 };
-if (!cart) return res.status(404).json({ error: 'Not found' });
-res.json(cart);
+
+exports.update = async (req, res) => {
+  const cart = await ShoppingCart.findOneAndUpdate(
+    { idShoppingCart: req.params.id },
+    req.body,
+    { new: true }
+  );
+  if (!cart) return res.status(404).json({ error: 'Not found' });
+  res.json(cart);
+};
 
 exports.delete = async (req, res) => {
   const cart = await ShoppingCart.findOneAndDelete({ idShoppingCart: req.params.id });
@@ -37,4 +46,3 @@ exports.getByCustomer = async (req, res) => {
   if (!cart) return res.status(404).json({ error: 'Carrito no encontrado' });
   res.json(cart);
 };
-
