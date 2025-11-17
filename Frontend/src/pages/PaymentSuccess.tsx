@@ -20,7 +20,6 @@ export default function PaymentSuccess() {
           <p>Tu pago fue realizado con éxito. Te enviamos un correo con los detalles.</p>
           <div className="flex gap-3">
             <Button onClick={() => navigate("/")}>Seguir comprando</Button>
-            <Button variant="secondary" onClick={() => navigate("/carrito")}>Ver carrito</Button>
           </div>
         </CardContent>
       </Card>

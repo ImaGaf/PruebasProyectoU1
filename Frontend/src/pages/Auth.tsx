@@ -42,13 +42,7 @@ export default function Auth() {
         description: `Bienvenido, ${user.firstName || user.email}`,
       });
 
-      if (user.role === "admin") {
-        window.location.href = "/admin";
-      } else if (user.role === "employee") {
-        window.location.href = "/dashboard";
-      } else {
-        window.location.href = "/";
-      }
+      window.location.href = "/"
 
     } catch (error: any) {
       toast({

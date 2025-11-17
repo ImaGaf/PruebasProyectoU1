@@ -1,23 +1,23 @@
-const CartItem = require("../models/customer");
+const Customer = require("../models/customer");
 
-exports.findAll = () => CartItem.find();
+exports.findAll = () => Customer.find();
 
 exports.findById = async (id) => {
-  const item = await CartItem.findById(id);
-  if (!item) throw new Error("Item del carrito no encontrado");
-  return item;
+  const customer = await Customer.findById(id);
+  if (!customer) throw new Error("Customer not found");
+  return customer;
 };
 
-exports.create = (data) => CartItem.create(data);
+exports.create = (data) => Customer.create(data);
 
 exports.update = async (id, data) => {
-  const updated = await CartItem.findByIdAndUpdate(id, data, { new: true });
-  if (!updated) throw new Error("Item del carrito no encontrado");
+  const updated = await Customer.findByIdAndUpdate(id, data, { new: true });
+  if (!updated) throw new Error("Customer not found");
   return updated;
 };
 
 exports.remove = async (id) => {
-  const deleted = await CartItem.findByIdAndDelete(id);
-  if (!deleted) throw new Error("Item del carrito no encontrado");
+  const deleted = await Customer.findByIdAndDelete(id);
+  if (!deleted) throw new Error("Customer not found");
   return deleted;
 };
