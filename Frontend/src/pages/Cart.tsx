@@ -50,7 +50,7 @@ export default function Cart() {
 
   const subtotal = cartStore.getTotal();
   const shipping = subtotal > 50 ? 0 : 9.99;
-  const tax = subtotal * 0.1; // 10% tax
+  const tax = subtotal * 0.1; 
   const total = subtotal + shipping + tax;
 
   const getProductIcon = (productId: string, name: string) => {
@@ -129,7 +129,6 @@ export default function Cart() {
           </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Cart Items */}
             <div className="lg:col-span-2 space-y-4">
               <h2 className="text-xl font-semibold mb-4">Productos en tu carrito</h2>
 

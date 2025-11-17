@@ -163,7 +163,7 @@ export default function Checkout() {
               <p className="text-sm text-muted-foreground sm:col-span-2">Este formulario es solo visual. No se almacenan ni procesan datos de tarjeta.</p>
               <div className="sm:col-span-2 flex gap-3">
                 <Button type="button" variant="secondary" onClick={() => navigate("/payment-canceled")}>Cancelar</Button>
-                <Button type="submit">Pagar ahora</Button>
+                <Button type="submit" onClick={() => cartStore.clear()}>Pagar ahora</Button>
               </div>
             </CardContent>
           </Card>

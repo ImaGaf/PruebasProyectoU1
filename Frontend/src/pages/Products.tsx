@@ -24,6 +24,8 @@ import { useToast } from "@/hooks/use-toast";
 import { cartStore } from "@/lib/cart-store";
 import { ensureCartExists, upsertCartForCurrentUser } from "@/lib/cart-sync";
 
+// ... (imports y hooks igual que antes)
+
 export default function Products() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
@@ -44,13 +46,17 @@ export default function Products() {
   const productList = Array.isArray(products) ? products : [];
   const categoryList = Array.isArray(categories) ? categories : [];
 
+  // ---------------- FILTRO ----------------
   const filteredProducts = productList
     .filter((product: any) => {
       const matchesSearch =
         product.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         product.description?.toLowerCase().includes(searchTerm.toLowerCase());
+
       const matchesCategory =
-        selectedCategory === "all" || product.category === selectedCategory;
+        selectedCategory === "all" ||
+        String(product.category) === selectedCategory; // aquí conectamos product.category con category._id
+
       return matchesSearch && matchesCategory;
     })
     .sort((a: any, b: any) => {
@@ -65,9 +71,9 @@ export default function Products() {
       }
     });
 
+  // ---------------- FUNCIONES addToCart y wishlist ----------------
   const addToCart = async (product: any) => {
     const user = getCurrentUser();
-    
     if (!user || user.role !== "customer") {
       toast({
         title: "Error",
@@ -81,30 +87,19 @@ export default function Products() {
     setIsAddingToCart(productId);
 
     try {
-      console.log("Agregando producto al carrito:", product);
       const cartId = await ensureCartExists();
-      
-      if (!cartId) {
-        throw new Error("No se pudo crear o encontrar carrito");
-      }
-
-      console.log("Carrito asegurado con ID:", cartId);
-
+      if (!cartId) throw new Error("No se pudo crear o encontrar carrito");
 
       const cartItem = {
         id: `${productId}-${Date.now()}`,
         productId: productId,
         name: product.name || "Producto",
-        price: product.price || 29.99,
+        price: product.price,
         quantity: 1,
       };
-      
-      cartStore.addItem(cartItem);
-      console.log("Producto agregado al store local:", cartItem);
-      
-      await upsertCartForCurrentUser();
-      console.log("Carrito sincronizado con backend");
 
+      cartStore.addItem(cartItem);
+      await upsertCartForCurrentUser();
       sessionStorage.setItem("cart", JSON.stringify(cartStore.getItems()));
 
       toast({
@@ -112,17 +107,12 @@ export default function Products() {
         description: `${product.name} se ha añadido al carrito`,
       });
     } catch (error) {
-      console.error("Error al agregar al carrito:", error);
-    
       const items = cartStore.getItems();
-      const itemToRemove = items.find(item => 
-        item.productId === productId && 
-        item.id.includes(`${productId}-`)
+      const itemToRemove = items.find(
+        (item) => item.productId === productId && item.id.includes(`${productId}-`)
       );
-      if (itemToRemove) {
-        cartStore.removeItem(itemToRemove.id);
-      }
-      
+      if (itemToRemove) cartStore.removeItem(itemToRemove.id);
+
       toast({
         title: "Error",
         description: "No se pudo agregar el producto al carrito. Intenta de nuevo.",
@@ -165,16 +155,14 @@ export default function Products() {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <section className="bg-gradient-to-r from-cornsilk to-warm py-12">
-        <div className="container mx-auto px-4">
-          <div className="text-center">
-            <h1 className="text-4xl font-bold text-foreground mb-4">
-              Catálogo de Productos
-            </h1>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Explora nuestra colección completa de cerámicas artesanales. Cada
-              pieza es única y está hecha con amor y dedicación.
-            </p>
-          </div>
+        <div className="container mx-auto px-4 text-center">
+          <h1 className="text-4xl font-bold text-foreground mb-4">
+            Catálogo de Productos
+          </h1>
+          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+            Explora nuestra colección completa de cerámicas artesanales. Cada
+            pieza es única y está hecha con amor y dedicación.
+          </p>
         </div>
       </section>
 
@@ -193,6 +181,7 @@ export default function Products() {
               />
             </div>
 
+            {/* Category Select */}
             <Select
               value={selectedCategory}
               onValueChange={(value) => setSelectedCategory(value)}
@@ -203,13 +192,17 @@ export default function Products() {
               <SelectContent>
                 <SelectItem value="all">Todas las categorías</SelectItem>
                 {categoryList.map((category: any) => (
-                  <SelectItem key={category.categoryID} value={category.idCategory}>
+                  <SelectItem
+                    key={category._id}
+                    value={String(category._id)}
+                  >
                     {category.name}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
 
+            {/* Sort */}
             <Select value={sortBy} onValueChange={(value) => setSortBy(value)}>
               <SelectTrigger>
                 <SelectValue placeholder="Ordenar por" />
@@ -235,15 +228,19 @@ export default function Products() {
           <p className="text-muted-foreground">
             Mostrando {filteredProducts.length} productos
             {searchTerm && ` para "${searchTerm}"`}
-            {selectedCategory !== "all" && ` en "${categoryList.find(cat => cat.idCategory === selectedCategory)?.name || selectedCategory}"`}
+            {selectedCategory !== "all" &&
+              ` en "${categoryList.find((cat) => String(cat._id) === selectedCategory)?.name ||
+              selectedCategory
+              }"`}
           </p>
         </div>
 
+        {/* Product Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {filteredProducts.map((product: any, index: number) => {
             const productId = product.idProduct || `temp-${index}`;
             const isLoading = isAddingToCart === productId;
-            
+
             return (
               <Card
                 key={productId}
@@ -264,7 +261,7 @@ export default function Products() {
                       <Badge className="bg-ceramics hover:bg-ceramics/90 text-ceramics-foreground shadow-lg">
                         Artesanal
                       </Badge>
-                      {product.customizationAvailable && (
+                      {product.custom && (
                         <Badge
                           variant="secondary"
                           className="bg-white/90 text-foreground shadow-lg"
@@ -284,30 +281,19 @@ export default function Products() {
                     >
                       <Heart className="h-5 w-5" />
                     </Button>
-                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-4">
-                      <div className="flex items-center text-white/90">
-                        <div className="flex text-yellow-300">
-                          {[...Array(5)].map((_, i) => (
-                            <Star key={i} className="h-4 w-4 fill-current" />
-                          ))}
-                        </div>
-                        <span className="text-sm ml-2">(4.9)</span>
-                      </div>
-                    </div>
                   </div>
                 </CardHeader>
                 <CardContent className="p-6">
                   <CardTitle className="text-xl mb-3 line-clamp-2 text-foreground font-semibold">
-                    {product.name || `Producto Artesanal ${index + 1}`}
+                    {product.name}
                   </CardTitle>
                   <CardDescription className="text-muted-foreground mb-4 line-clamp-3 leading-relaxed">
-                    {product.description ||
-                      "Hermosa pieza de cerámica hecha a mano con técnicas tradicionales. Cada producto es único y especial, creado con amor y dedicación por nuestros artesanos."}
+                    {product.description}
                   </CardDescription>
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex flex-col">
                       <span className="text-2xl font-bold text-ceramics">
-                        ${product.price || "29.99"}
+                        ${product.price}
                       </span>
                       <span className="text-sm text-muted-foreground">
                         Precio por unidad
@@ -328,18 +314,17 @@ export default function Products() {
                   </div>
                   <div className="text-sm text-muted-foreground mb-4 p-2 bg-muted/50 rounded-lg">
                     <span className="font-medium">Categoría:</span>{" "}
-                    {categoryList.find(
-                      (cat) => cat.idCategory === product.category
-                    )?.name || "Cerámica General"}
+                    {categoryList.find((cat) => String(cat._id) === String(product.category))?.name ||
+                      "Cerámica General"}
                   </div>
                 </CardContent>
                 <CardFooter className="p-6 pt-0 flex gap-3">
                   <Button
                     className="flex-1 bg-ceramics hover:bg-ceramics/90 text-ceramics-foreground h-12 text-base font-medium shadow-lg hover:shadow-xl transition-all duration-300"
-                    disabled={product.stock === 0 || isLoading}
+                    disabled={product.stock === 0 || isAddingToCart === productId}
                     onClick={() => addToCart(product)}
                   >
-                    {isLoading ? (
+                    {isAddingToCart === productId ? (
                       <>
                         <div className="h-5 w-5 mr-2 animate-spin rounded-full border-2 border-ceramics-foreground border-t-transparent"></div>
                         Agregando...
@@ -355,10 +340,12 @@ export default function Products() {
                     variant="outline"
                     size="icon"
                     className="h-12 w-12 border-ceramics text-ceramics hover:bg-ceramics hover:text-ceramics-foreground"
+                    onClick={() => addToWishlist(product)}
                   >
-                    <span className="text-lg">👁️</span>
+                    <Heart className="h-5 w-5" />
                   </Button>
                 </CardFooter>
+
               </Card>
             );
           })}

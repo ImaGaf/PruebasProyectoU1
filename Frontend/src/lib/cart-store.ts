@@ -39,6 +39,7 @@ export const cartStore = {
   clear: () => {
     cartItems = [];
     notifyListeners();
+    notifyListeners();
   },
   
   getTotal: () => {

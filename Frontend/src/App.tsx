@@ -8,8 +8,6 @@ import Home from "./pages/Home";
 import Products from "./pages/Products";
 import Auth from "./pages/Auth";
 import Cart from "./pages/Cart";
-import CustomerPage from "./pages/CustomerPage";
-import ProductPage from "./pages/ProductPage";
 import Profile from "./pages/Profile";
 import Checkout from "./pages/Checkout";
 import PaymentSuccess from "./pages/PaymentSuccess";
@@ -36,8 +34,6 @@ const App = () => (
             <Route path="/payment-success" element={<ProtectedRoute role="customer"><PaymentSuccess /></ProtectedRoute>} />
             <Route path="/payment-canceled" element={<ProtectedRoute role="customer"><PaymentCanceled /></ProtectedRoute>} />
             <Route path="/perfil" element={<ProtectedRoute role="customer"><Profile /></ProtectedRoute>} />
-            <Route path="/clientes" element={<ProtectedRoute role="employee"><CustomerPage /></ProtectedRoute>} />
-            <Route path="/productoscontrol" element={<ProtectedRoute role="employee"><ProductPage /></ProtectedRoute>} />
           </Routes>
         </Layout>
       </BrowserRouter>
