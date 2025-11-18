@@ -1,8 +1,12 @@
-const shoppingCartService = require("../services/shoppingCartService");
+
+const ShoppingCart = require('../models/shoppingCart');
+
 
 exports.create = async (req, res) => {
   try {
-    const cart = await shoppingCartService.createShoppingCart(req.body);
+    console.log(req.body);
+    const cart = new ShoppingCart(req.body);
+    await cart.save();
     res.status(201).json(cart);
   } catch (err) {
     res.status(400).json({ error: err.message });
@@ -10,50 +14,35 @@ exports.create = async (req, res) => {
 };
 
 exports.getAll = async (req, res) => {
-  try {
-    const carts = await shoppingCartService.getAllShoppingCarts();
-    res.status(200).json(carts);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+  const carts = await ShoppingCart.find();
+  res.json(carts);
 };
 
 exports.getById = async (req, res) => {
-  try {
-    const cart = await shoppingCartService.getShoppingCartById(req.params.id);
-    if (!cart) return res.status(404).json({ error: 'Not found' });
-    res.json(cart);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+  const cart = await ShoppingCart.findOne({ idShoppingCart: req.params.id });
+  if (!cart) return res.status(404).json({ error: 'Not found' });
+  res.json(cart);
 };
 
 exports.update = async (req, res) => {
-  try {
-    const cart = await shoppingCartService.updateShoppingCart(req.params.id, req.body);
-    if (!cart) return res.status(404).json({ error: 'Not found' });
-    res.json(cart);
-  } catch (err) {
-    res.status(400).json({ error: err.message });
-  }
+  const cart = await ShoppingCart.findOneAndUpdate(
+    { idShoppingCart: req.params.id },
+    req.body,
+    { new: true }
+  );
+  if (!cart) return res.status(404).json({ error: 'Not found' });
+  res.json(cart);
 };
 
 exports.delete = async (req, res) => {
-  try {
-    const cart = await shoppingCartService.deleteShoppingCart(req.params.id);
-    if (!cart) return res.status(404).json({ error: 'Not found' });
-    res.json({ message: 'Deleted' });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+  const cart = await ShoppingCart.findOneAndDelete({ idShoppingCart: req.params.id });
+  if (!cart) return res.status(404).json({ error: 'Not found' });
+  res.json({ message: 'Deleted' });
 };
 
 exports.getByCustomer = async (req, res) => {
-  try {
-    const cart = await shoppingCartService.getShoppingCartByCustomer(req.params.customerId);
-    if (!cart) return res.status(404).json({ error: 'Carrito no encontrado' });
-    res.json(cart);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+  const customerId = req.params.customerId;
+  const cart = await ShoppingCart.findOne({ customer: customerId });
+  if (!cart) return res.status(404).json({ error: 'Carrito no encontrado' });
+  res.json(cart);
 };

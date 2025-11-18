@@ -1,4 +1,3 @@
-// middlewares/basicAuth.js
 require("dotenv").config();
 
 const basicAuth = (req, res, next) => {
@@ -13,7 +12,6 @@ const basicAuth = (req, res, next) => {
     .toString()
     .split(':');
 
-  // Usuario y contraseña desde variables de entorno
   const ADMIN_USER = process.env.BASIC_USER;
   const ADMIN_PASS = process.env.BASIC_PASS;
 
