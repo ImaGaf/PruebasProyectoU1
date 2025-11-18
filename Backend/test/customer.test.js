@@ -69,5 +69,6 @@ describe("Rutas de /barroco/customers", () => {
     expect(res.statusCode).toBe(200);
     expect(res.body).toEqual({ message: "Customer deleted successfully" });
     expect(customerService.remove).toHaveBeenCalledWith("1");
+    //expect(customerService.remove).toHaveBeenCalledWith("1");//
   });
 });

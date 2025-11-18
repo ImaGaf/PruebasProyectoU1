@@ -142,5 +142,6 @@ describe("Rutas de /barroco/products", () => {
     expect(res.statusCode).toBe(200);
     expect(res.body).toEqual({ message: "Producto eliminado", product: deletedProduct });
     expect(productService.deleteProduct).toHaveBeenCalledWith("1");
+    //expect(productService.deleteProduct).toHaveBeenCalledWith("1");//  
   });
 });

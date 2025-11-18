@@ -136,5 +136,6 @@ describe('ShoppingCart API', () => {
     expect(res.statusCode).toBe(200);
     expect(res.body).toHaveProperty('message');
     expect(shoppingCartService.deleteShoppingCart).toHaveBeenCalledWith('1');
+    //expect(shoppingCartService.deleteShoppingCart).toHaveBeenCalledWith('1');//
   });
 });
