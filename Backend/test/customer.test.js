@@ -16,6 +16,7 @@ describe("Rutas de /barroco/customers", () => {
     jest.clearAllMocks();
   });
 
+  // ---- GET / ----
   test("GET /barroco/customers debe retornar todos los clientes", async () => {
     const mockCustomers = [
       { _id: "1", name: "Juan" },
@@ -30,6 +31,30 @@ describe("Rutas de /barroco/customers", () => {
     expect(customerService.findAll).toHaveBeenCalledTimes(1);
   });
 
+  // ---- GET /:id ----
+  test("GET /barroco/customers/:id debe retornar un cliente existente", async () => {
+    const mockCustomer = { _id: "1", name: "Carlos" };
+    customerService.findById.mockResolvedValue(mockCustomer);
+
+    const res = await request(app).get("/barroco/customers/1");
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body).toEqual(mockCustomer);
+    expect(customerService.findById).toHaveBeenCalledWith("1");
+  });
+
+  test("GET /barroco/customers/:id debe retornar 404 si el cliente no existe", async () => {
+    customerService.findById.mockImplementation(() => {
+      throw new Error("Item del carrito no encontrado");
+    });
+
+    const res = await request(app).get("/barroco/customers/99");
+
+    expect(res.statusCode).toBe(404);
+    expect(res.body).toEqual({ message: "Customer not found" });
+  });
+
+  // ---- POST / ----
   test("POST /barroco/customers debe crear un cliente", async () => {
     const newCustomer = { name: "Lucía" };
     const createdCustomer = { _id: "3", ...newCustomer };
@@ -44,6 +69,7 @@ describe("Rutas de /barroco/customers", () => {
     expect(customerService.create).toHaveBeenCalledWith(newCustomer);
   });
 
+  // ---- PUT /:id ----
   test("PUT /barroco/customers/:id debe actualizar un cliente", async () => {
     customerService.update.mockResolvedValue({
       _id: "1",
@@ -61,6 +87,7 @@ describe("Rutas de /barroco/customers", () => {
     });
   });
 
+  // ---- DELETE /:id ----
   test("DELETE /barroco/customers/:id debe eliminar un cliente", async () => {
     customerService.remove.mockResolvedValue({ _id: "1" });
 

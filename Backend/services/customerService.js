@@ -2,6 +2,11 @@ const Customer = require("../models/customer");
 
 exports.findAll = () => Customer.find();
 
+exports.findById = async (id) => {
+  const customer = await Customer.findById(id);
+  if (!customer) throw new Error("Customer not found");
+  return customer;
+};
 
 exports.create = (data) => Customer.create(data);
 
