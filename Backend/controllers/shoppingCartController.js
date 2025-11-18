@@ -3,7 +3,6 @@ const shoppingCartService = require('../services/shoppingCartService');
 
 exports.create = async (req, res) => {
   try {
-    console.log(req.body);
     const cart = await shoppingCartService.createShoppingCart(req.body);
     res.status(201).json(cart);
   } catch (err) {
