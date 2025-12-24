@@ -144,4 +144,99 @@ describe("Rutas de /barroco/products", () => {
     expect(productService.deleteProduct).toHaveBeenCalledWith("1");
     //expect(productService.deleteProduct).toHaveBeenCalledWith("1");//  
   });
+
+  test("DELETE /api/products/999 debe retornar 404 si el producto no existe", async () => {
+    productService.deleteProduct.mockImplementation(() => {
+      throw new Error("Producto no encontrado");
+    });
+
+    const res = await request(app).delete("/api/products/999");
+
+    expect(res.statusCode).toBe(404);
+    expect(res.body).toHaveProperty("message");
+  });
+
+  test("PUT /api/products/999 debe retornar 404 si el producto no existe", async () => {
+    productService.updateProduct.mockImplementation(() => {
+      throw new Error("Producto no encontrado");
+    });
+
+    const res = await request(app)
+      .put("/api/products/999")
+      .send({ name: "Test" });
+
+    expect(res.statusCode).toBe(404);
+    expect(res.body).toHaveProperty("message");
+  });
+
+  test("POST /api/products/ debe manejar errores de validación", async () => {
+    productService.createProduct.mockImplementation(() => {
+      throw new Error("Validation error");
+    });
+
+    const res = await request(app)
+      .post("/api/products/")
+      .send({ name: "" });
+
+    expect(res.statusCode).toBe(400);
+    expect(res.body).toHaveProperty("message");
+  });
+
+  test("POST /api/products/products/1/purchase debe manejar cantidad inválida", async () => {
+    productService.purchaseProduct.mockImplementation(() => {
+      throw new Error("Cantidad inválida");
+    });
+
+    const res = await request(app)
+      .post("/api/products/products/1/purchase")
+      .send({ quantity: 0 });
+
+    expect(res.statusCode).toBe(400);
+    expect(res.body).toHaveProperty("message");
+  });
+
+  test("POST /api/products/products/1/purchase debe manejar stock insuficiente", async () => {
+    productService.purchaseProduct.mockImplementation(() => {
+      throw new Error("Stock insuficiente");
+    });
+
+    const res = await request(app)
+      .post("/api/products/products/1/purchase")
+      .send({ quantity: 100 });
+
+    expect(res.statusCode).toBe(400);
+    expect(res.body.message).toBe("Stock insuficiente");
+  });
+
+  test("GET /api/products/productsAvailable debe manejar errores", async () => {
+    productService.getAvailableProducts.mockImplementation(() => {
+      throw new Error("Database error");
+    });
+
+    const res = await request(app).get("/api/products/productsAvailable");
+
+    expect(res.statusCode).toBe(500);
+    expect(res.body).toHaveProperty("message");
+  });
+
+  test("GET /api/products/productsDiscounted debe manejar errores", async () => {
+    productService.getCustomDiscountedProducts.mockImplementation(() => {
+      throw new Error("Database error");
+    });
+
+    const res = await request(app).get("/api/products/productsDiscounted");
+
+    expect(res.statusCode).toBe(500);
+    expect(res.body).toHaveProperty("message");
+  });
+
+  test("GET /api/products/ debe devolver array vacío si no hay productos", async () => {
+    productService.getAllProducts.mockResolvedValue([]);
+
+    const res = await request(app).get("/api/products/");
+
+    expect(res.statusCode).toBe(200);
+    expect(Array.isArray(res.body)).toBe(true);
+    expect(res.body.length).toBe(0);
+  });
 });

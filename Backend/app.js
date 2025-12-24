@@ -24,6 +24,9 @@ app.use(basicAuth);
 app.use("/barroco/products", require("./routes/productRoutes"));
 app.use("/barroco/categories", require("./routes/categoryRoutes"));
 app.use("/barroco/customers", require("./routes/customerRoutes"));
+
+app.use("/api/cart", require("./routes/shoppingCartRoutes"));
+
 app.use("/barroco/shoppingCart", require('./routes/shoppingCartRoutes'));
 
 app.get("/", (req, res) => {
