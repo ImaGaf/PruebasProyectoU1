@@ -1,173 +1,186 @@
 const request = require("supertest");
 const express = require("express");
+const dbHandler = require("./dbHandler");
+const Category = require("../models/category");
 
-jest.mock("../services/categoryService");
+// Solo mockeamos basicAuth (para no lidiar con autenticación en tests)
 jest.mock("../middlewares/basicAuth", () => (req, res, next) => next());
 
-const categoryService = require("../services/categoryService");
 const categoryRoutes = require("../routes/categoryRoutes");
 
 const app = express();
 app.use(express.json());
 app.use("/api/categories", categoryRoutes);
 
-describe('Category API', () => {
-  afterEach(() => {
-    jest.clearAllMocks();
+describe("Category API (BD real)", () => {
+  beforeAll(async () => {
+    await dbHandler.connect();
   });
 
-  test('GET /api/categories debe devolver lista vacía', async () => {
-    categoryService.getAllCategories.mockResolvedValue([]);
-    
-    const res = await request(app).get('/api/categories');
-    
+  afterEach(async () => {
+    await dbHandler.clearDatabase();
+  });
+
+  afterAll(async () => {
+    await dbHandler.closeDatabase();
+  });
+
+  test("GET /api/categories debe devolver lista vacía", async () => {
+    // Arrange (BD vacía)
+
+    // Act
+    const res = await request(app).get("/api/categories");
+
+    // Assert
     expect(res.statusCode).toBe(200);
     expect(Array.isArray(res.body)).toBe(true);
     expect(res.body.length).toBe(0);
-    expect(categoryService.getAllCategories).toHaveBeenCalledTimes(1);
   });
 
-  test('POST /api/categories debe crear una categoría', async () => {
-    const newCategory = {
-      name: 'Electrónica',
-      description: 'Productos electrónicos'
-    };
-    const createdCategory = { _id: '123', ...newCategory };
-    categoryService.createCategory.mockResolvedValue(createdCategory);
-    
-    const res = await request(app).post('/api/categories').send(newCategory);
-    
+  test("POST /api/categories debe crear una categoría", async () => {
+    // Arrange
+    const newCategory = { categoryID: 1, name: "Electrónica", description: "Productos electrónicos" };
+
+    // Act
+    const res = await request(app).post("/api/categories").send(newCategory);
+
+    // Assert
     expect(res.statusCode).toBe(201);
-    expect(res.body).toHaveProperty('_id');
-    expect(res.body.name).toBe('Electrónica');
-    expect(categoryService.createCategory).toHaveBeenCalledWith(newCategory);
+    expect(res.body).toHaveProperty("_id");
+    expect(res.body.name).toBe("Electrónica");
+
+    // Verificar que se guardó en la BD
+    const found = await Category.findById(res.body._id);
+    expect(found).not.toBeNull();
   });
 
-  test('POST /api/categories debe fallar si falta el nombre', async () => {
-    const invalidCategory = { 
-      description: 'Sin nombre' 
-    };
-    categoryService.createCategory.mockRejectedValue(
-      new Error('name is required')
-    );
-    
-    const res = await request(app).post('/api/categories').send(invalidCategory);
-    
+  test("POST /api/categories debe fallar si falta el nombre", async () => {
+    // Arrange
+    const invalidCategory = { categoryID: 2, description: "Sin nombre" };
+
+    // Act
+    const res = await request(app).post("/api/categories").send(invalidCategory);
+
+    // Assert
     expect(res.statusCode).toBe(400);
-    expect(res.body).toHaveProperty('message');
+    expect(res.body).toHaveProperty("message");
   });
 
-  test('GET /api/categories después de crear una categoría debe devolverla', async () => {
-    const mockCategories = [
-      { _id: '1', name: 'Ropa', description: 'Ropa y accesorios' }
-    ];
-    categoryService.getAllCategories.mockResolvedValue(mockCategories);
-    
-    const res = await request(app).get('/api/categories');
-    
+  test("GET /api/categories después de crear debe devolver las categorías", async () => {
+    // Arrange
+    await Category.create({ categoryID: 10, name: "Ropa", description: "Ropa y accesorios" });
+
+    // Act
+    const res = await request(app).get("/api/categories");
+
+    // Assert
     expect(res.statusCode).toBe(200);
     expect(res.body.length).toBeGreaterThan(0);
-    expect(res.body.some(c => c.name === 'Ropa')).toBe(true);
+    expect(res.body.some((c) => c.name === "Ropa")).toBe(true);
   });
 
-  test('GET /api/categories permite múltiples categorías', async () => {
-    const mockCategories = [
-      { _id: '1', name: 'Deportes', description: 'Artículos deportivos' },
-      { _id: '2', name: 'Hogar', description: 'Artículos para el hogar' }
-    ];
-    categoryService.getAllCategories.mockResolvedValue(mockCategories);
-    
-    const res = await request(app).get('/api/categories');
-    
+  test("GET /api/categories permite múltiples categorías", async () => {
+    // Arrange
+    await Category.create({ categoryID: 20, name: "Deportes", description: "Artículos deportivos" });
+    await Category.create({ categoryID: 21, name: "Hogar", description: "Artículos para el hogar" });
+
+    // Act
+    const res = await request(app).get("/api/categories");
+
+    // Assert
     expect(res.body.length).toBeGreaterThanOrEqual(2);
-    expect(res.body.some(c => c.name === 'Deportes')).toBe(true);
-    expect(res.body.some(c => c.name === 'Hogar')).toBe(true);
+    expect(res.body.some((c) => c.name === "Deportes")).toBe(true);
+    expect(res.body.some((c) => c.name === "Hogar")).toBe(true);
   });
 
-  test('GET /api/categories/:id debe devolver una categoría específica', async () => {
-    const mockCategory = { _id: '123', name: 'Libros', description: 'Libros y revistas' };
-    categoryService.getCategoryById.mockResolvedValue(mockCategory);
-    
-    const res = await request(app).get('/api/categories/123');
-    
+  test("GET /api/categories/:id debe devolver una categoría específica", async () => {
+    // Arrange
+    const created = await Category.create({ categoryID: 30, name: "Libros", description: "Libros y revistas" });
+
+    // Act
+    const res = await request(app).get(`/api/categories/${created._id}`);
+
+    // Assert
     expect(res.statusCode).toBe(200);
-    expect(res.body._id).toBe('123');
-    expect(res.body.name).toBe('Libros');
-    expect(categoryService.getCategoryById).toHaveBeenCalledWith('123');
+    expect(res.body.name).toBe("Libros");
   });
 
-  test('GET /api/categories/:id debe devolver 404 si no existe', async () => {
-    categoryService.getCategoryById.mockRejectedValue(
-      new Error('Category not found')
-    );
-    
-    const res = await request(app).get('/api/categories/999');
-    
+  test("GET /api/categories/:id debe devolver 404 si no existe", async () => {
+    // Arrange
+    const fakeId = "507f1f77bcf86cd799439011";
+
+    // Act
+    const res = await request(app).get(`/api/categories/${fakeId}`);
+
+    // Assert
     expect(res.statusCode).toBe(404);
-    expect(res.body).toHaveProperty('message');
+    expect(res.body).toHaveProperty("message");
   });
 
-  test('PUT /api/categories/:id actualiza la categoría', async () => {
-    const updatedCategory = { 
-      _id: '123', 
-      name: 'Música', 
-      description: 'Instrumentos y discos' 
-    };
-    categoryService.updateCategory.mockResolvedValue(updatedCategory);
-    
-    const res = await request(app).put('/api/categories/123').send({ 
-      name: 'Música',
-      description: 'Instrumentos y discos' 
-    });
-    
+  test("PUT /api/categories/:id actualiza la categoría", async () => {
+    // Arrange
+    const created = await Category.create({ categoryID: 40, name: "Música", description: "Instrumentos" });
+
+    // Act
+    const res = await request(app)
+      .put(`/api/categories/${created._id}`)
+      .send({ name: "Música Actualizada", description: "Instrumentos y discos" });
+
+    // Assert
     expect(res.statusCode).toBe(200);
-    expect(res.body.name).toBe('Música');
-    expect(categoryService.updateCategory).toHaveBeenCalledWith('123', { 
-      name: 'Música',
-      description: 'Instrumentos y discos' 
-    });
+    expect(res.body.name).toBe("Música Actualizada");
+
+    // Verificar en BD
+    const found = await Category.findById(created._id);
+    expect(found.name).toBe("Música Actualizada");
   });
 
-  test('PUT /api/categories/:id debe devolver 404 si no existe', async () => {
-    categoryService.updateCategory.mockRejectedValue(
-      new Error('Category not found')
-    );
-    
-    const res = await request(app).put('/api/categories/999').send({ name: 'Test' });
-    
+  test("PUT /api/categories/:id debe devolver 404 si no existe", async () => {
+    // Arrange
+    const fakeId = "507f1f77bcf86cd799439011";
+
+    // Act
+    const res = await request(app).put(`/api/categories/${fakeId}`).send({ name: "Test" });
+
+    // Assert
     expect(res.statusCode).toBe(404);
-    expect(res.body).toHaveProperty('message');
+    expect(res.body).toHaveProperty("message");
   });
 
-  test('DELETE /api/categories/:id elimina la categoría', async () => {
-    const deletedCategory = { 
-      _id: '123', 
-      name: 'Juguetes', 
-      description: 'Juguetes y juegos' 
-    };
-    categoryService.deleteCategory.mockResolvedValue(deletedCategory);
-    
-    const res = await request(app).delete('/api/categories/123');
-    
+  test("DELETE /api/categories/:id elimina la categoría", async () => {
+    // Arrange
+    const created = await Category.create({ categoryID: 50, name: "Juguetes", description: "Juguetes y juegos" });
+
+    // Act
+    const res = await request(app).delete(`/api/categories/${created._id}`);
+
+    // Assert
     expect(res.statusCode).toBe(200);
-    expect(res.body).toHaveProperty('message');
-    expect(res.body.message).toBe('Category deleted');
-    expect(categoryService.deleteCategory).toHaveBeenCalledWith('123');
+    expect(res.body).toHaveProperty("message");
+    expect(res.body.message).toBe("Category deleted");
+
+    // Verificar que fue eliminada
+    const found = await Category.findById(created._id);
+    expect(found).toBeNull();
   });
 
-  test('DELETE /api/categories/:id debe devolver 404 si no existe', async () => {
-    categoryService.deleteCategory.mockRejectedValue(
-      new Error('Category not found')
-    );
-    
-    const res = await request(app).delete('/api/categories/999');
-    
+  test("DELETE /api/categories/:id debe devolver 404 si no existe", async () => {
+    // Arrange
+    const fakeId = "507f1f77bcf86cd799439011";
+
+    // Act
+    const res = await request(app).delete(`/api/categories/${fakeId}`);
+
+    // Assert
     expect(res.statusCode).toBe(404);
-    expect(res.body).toHaveProperty('message');
+    expect(res.body).toHaveProperty("message");
   });
 
-  test('GET a una ruta inexistente devuelve 404', async () => {
-    const res = await request(app).get('/api/unknown');
+  test("GET a una ruta inexistente devuelve 404", async () => {
+    // Act
+    const res = await request(app).get("/api/unknown");
+
+    // Assert
     expect(res.statusCode).toBe(404);
   });
 });

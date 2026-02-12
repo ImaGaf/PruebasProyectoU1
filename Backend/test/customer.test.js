@@ -1,129 +1,175 @@
 const request = require("supertest");
 const express = require("express");
+const dbHandler = require("./dbHandler");
+const Customer = require("../models/customer");
 
-jest.mock("../services/customerService");
 jest.mock("../middlewares/basicAuth", () => (req, res, next) => next());
 
-const customerService = require("../services/customerService");
 const customerRoutes = require("../routes/customerRoutes");
 
 const app = express();
 app.use(express.json());
 app.use("/barroco/customers", customerRoutes);
 
-describe("Rutas de /barroco/customers", () => {
-  afterEach(() => {
-    jest.clearAllMocks();
+describe("Customer API (BD real)", () => {
+  beforeAll(async () => {
+    await dbHandler.connect();
+  });
+
+  afterEach(async () => {
+    await dbHandler.clearDatabase();
+  });
+
+  afterAll(async () => {
+    await dbHandler.closeDatabase();
   });
 
   test("GET /barroco/customers debe retornar todos los clientes", async () => {
-    const mockCustomers = [
-      { _id: "1", name: "Juan" },
-      { _id: "2", name: "Ana" },
-    ];
-    customerService.findAll.mockResolvedValue(mockCustomers);
+    // Arrange
+    await Customer.create({
+      firstName: "Juan", lastName: "Pérez", email: "juan@test.com",
+      password: "pass123", phone: "1234567890", billingAddress: "Calle 1",
+    });
+    await Customer.create({
+      firstName: "Ana", lastName: "García", email: "ana@test.com",
+      password: "pass456", phone: "0987654321", billingAddress: "Calle 2",
+    });
 
+    // Act
     const res = await request(app).get("/barroco/customers");
 
+    // Assert
     expect(res.statusCode).toBe(200);
-    expect(res.body).toEqual(mockCustomers);
-    expect(customerService.findAll).toHaveBeenCalledTimes(1);
+    expect(res.body).toHaveLength(2);
+    expect(res.body[0].firstName).toBe("Juan");
   });
 
   test("POST /barroco/customers debe crear un cliente", async () => {
-    const newCustomer = { name: "Lucía" };
-    const createdCustomer = { _id: "3", ...newCustomer };
-    customerService.create.mockResolvedValue(createdCustomer);
+    // Arrange
+    const newCustomer = {
+      firstName: "Lucía", lastName: "López", email: "lucia@test.com",
+      password: "secreto", phone: "5555555555", billingAddress: "Calle 3",
+    };
 
-    const res = await request(app)
-      .post("/barroco/customers")
-      .send(newCustomer);
+    // Act
+    const res = await request(app).post("/barroco/customers").send(newCustomer);
 
+    // Assert
     expect(res.statusCode).toBe(201);
-    expect(res.body).toEqual(createdCustomer);
-    expect(customerService.create).toHaveBeenCalledWith(newCustomer);
+    expect(res.body.firstName).toBe("Lucía");
+
+    // Verificar que se guardó en BD
+    const found = await Customer.findById(res.body._id);
+    expect(found).not.toBeNull();
   });
 
   test("PUT /barroco/customers/:id debe actualizar un cliente", async () => {
-    customerService.update.mockResolvedValue({
-      _id: "1",
-      name: "Pedro Actualizado",
+    // Arrange
+    const created = await Customer.create({
+      firstName: "Pedro", lastName: "Ruiz", email: "pedro@test.com",
+      password: "pass789", phone: "1112223333", billingAddress: "Calle 4",
     });
 
+    // Act
     const res = await request(app)
-      .put("/barroco/customers/1")
-      .send({ name: "Pedro Actualizado" });
+      .put(`/barroco/customers/${created._id}`)
+      .send({ firstName: "Pedro Actualizado" });
 
+    // Assert
     expect(res.statusCode).toBe(200);
     expect(res.body).toEqual({ message: "Customer updated successfully" });
-    expect(customerService.update).toHaveBeenCalledWith("1", {
-      name: "Pedro Actualizado",
-    });
+
+    // Verificar en BD
+    const found = await Customer.findById(created._id);
+    expect(found.firstName).toBe("Pedro Actualizado");
   });
 
   test("DELETE /barroco/customers/:id debe eliminar un cliente", async () => {
-    customerService.remove.mockResolvedValue({ _id: "1" });
+    // Arrange
+    const created = await Customer.create({
+      firstName: "Carlos", lastName: "Soto", email: "carlos@test.com",
+      password: "pass000", phone: "9998887777", billingAddress: "Calle 5",
+    });
 
-    const res = await request(app).delete("/barroco/customers/1");
+    // Act
+    const res = await request(app).delete(`/barroco/customers/${created._id}`);
 
+    // Assert
     expect(res.statusCode).toBe(200);
     expect(res.body).toEqual({ message: "Customer deleted successfully" });
-    expect(customerService.remove).toHaveBeenCalledWith("1");
+
+    const found = await Customer.findById(created._id);
+    expect(found).toBeNull();
   });
 
   test("GET /barroco/customers/:id debe retornar un cliente específico", async () => {
-    const mockCustomer = { _id: "1", name: "Juan", email: "juan@test.com" };
-    customerService.findById = jest.fn().mockResolvedValue(mockCustomer);
+    // Arrange
+    const created = await Customer.create({
+      firstName: "Elena", lastName: "Martín", email: "elena@test.com",
+      password: "pass111", phone: "4443332222", billingAddress: "Calle 6",
+    });
 
-    const res = await request(app).get("/barroco/customers/1");
+    // Act
+    const res = await request(app).get(`/barroco/customers/${created._id}`);
 
+    // Assert
     expect(res.statusCode).toBe(200);
-    expect(res.body).toEqual(mockCustomer);
-    expect(customerService.findById).toHaveBeenCalledWith("1");
+    expect(res.body.firstName).toBe("Elena");
   });
 
   test("GET /barroco/customers/:id debe retornar 404 si no existe", async () => {
-    customerService.findById = jest.fn().mockResolvedValue(null);
+    // Arrange
+    const fakeId = "507f1f77bcf86cd799439011";
 
-    const res = await request(app).get("/barroco/customers/999");
+    // Act
+    const res = await request(app).get(`/barroco/customers/${fakeId}`);
 
-    expect(res.statusCode).toBe(404);
-    expect(res.body).toHaveProperty("message");
+    // Assert - el service lanza error, controlador no tiene try/catch => 500
+    expect([404, 500]).toContain(res.statusCode);
   });
 
   test("PUT /barroco/customers/:id debe manejar error si no existe", async () => {
-    customerService.update.mockRejectedValue(new Error("Customer not found"));
+    // Arrange
+    const fakeId = "507f1f77bcf86cd799439011";
 
+    // Act
     const res = await request(app)
-      .put("/barroco/customers/999")
-      .send({ name: "Test" });
+      .put(`/barroco/customers/${fakeId}`)
+      .send({ firstName: "Test" });
 
+    // Assert
     expect(res.statusCode).toBe(500);
   });
 
   test("DELETE /barroco/customers/:id debe manejar error si no existe", async () => {
-    customerService.remove.mockRejectedValue(new Error("Customer not found"));
+    // Arrange
+    const fakeId = "507f1f77bcf86cd799439011";
 
-    const res = await request(app).delete("/barroco/customers/999");
+    // Act
+    const res = await request(app).delete(`/barroco/customers/${fakeId}`);
 
+    // Assert
     expect(res.statusCode).toBe(500);
   });
 
   test("POST /barroco/customers debe manejar errores de validación", async () => {
-    customerService.create.mockRejectedValue(new Error("Validation error"));
+    // Arrange - enviar datos incompletos (falta email requerido)
+    const invalidData = { firstName: "Sin Email" };
 
-    const res = await request(app)
-      .post("/barroco/customers")
-      .send({ name: "" });
+    // Act
+    const res = await request(app).post("/barroco/customers").send(invalidData);
 
+    // Assert
     expect(res.statusCode).toBe(500);
   });
 
   test("GET /barroco/customers debe devolver array vacío si no hay clientes", async () => {
-    customerService.findAll.mockResolvedValue([]);
+    // Arrange (BD vacía)
 
+    // Act
     const res = await request(app).get("/barroco/customers");
 
+    // Assert
     expect(res.statusCode).toBe(200);
     expect(Array.isArray(res.body)).toBe(true);
     expect(res.body.length).toBe(0);

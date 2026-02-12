@@ -1,5 +1,6 @@
 module.exports = {
     testEnvironment: 'node',
+    maxWorkers: 1,
     coverageDirectory: 'coverage',
     collectCoverageFrom: [
         'controllers/**/*.js',
@@ -13,13 +14,14 @@ module.exports = {
     ],
     coverageReporters: ['text', 'lcov', 'html'],
     testMatch: ['**/test/**/*.test.js'],
+    testTimeout: 30000,
     verbose: true,
     coverageThreshold: {
         global: {
-            branches: 50,
-            functions: 50,
-            lines: 50,
-            statements: 50
+            branches: 95,
+            functions: 95,
+            lines: 95,
+            statements: 95
         }
     }
 };
