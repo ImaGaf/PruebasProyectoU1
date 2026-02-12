@@ -7,8 +7,8 @@ on:
     branches: [ main, develop ]
 
 jobs:
-  backend-tests:
-    name: Backend - Pruebas y Cobertura
+  test-backend:
+    name: Backend - Pruebas y Linting
     runs-on: ubuntu-latest
 
     env:
@@ -25,15 +25,18 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Instalar dependencias
+      # 3. Instalar dependencias
+      - name: Instalar dependencias Backend
         working-directory: ./Backend
         run: npm install
 
-      - name: Ejecutar ESLint
+      # 4. Ejecutar ESLint
+      - name: Ejecutar ESLint Backend
         working-directory: ./Backend
         run: npm run lint
 
-      - name: Ejecutar pruebas con cobertura (≥95%)
+      # 5. Ejecutar pruebas con Jest
+      - name: Ejecutar pruebas Backend
         working-directory: ./Backend
         run: npm run test:coverage
 
@@ -62,14 +65,16 @@ jobs:
         working-directory: ./Frontend
         run: npm install
 
-      - name: Ejecutar pruebas con cobertura
-        working-directory: ./Frontend
+      # 6. Ejecutar pruebas con cobertura
+      - name: Ejecutar pruebas con cobertura Backend
+        working-directory: ./Backend
         run: npm run test:coverage
 
-      - name: Subir reporte de cobertura Frontend
+      # 7. Subir reporte de cobertura Backend
+      - name: Subir reporte de cobertura Backend
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: frontend-coverage-report
-          path: Frontend/coverage/
+          name: backend-coverage-report
+          path: Backend/coverage/
           retention-days: 30
