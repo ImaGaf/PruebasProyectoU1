@@ -1,0 +1,40 @@
+name: CD - Despliegue Continuo (Render)
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  test:
+    name: Ejecutar Pruebas
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout código
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Instalar dependencias Backend
+        working-directory: ./Backend
+        run: npm install
+
+      - name: Ejecutar pruebas Backend
+        working-directory: ./Backend
+        env:
+          MONGODB_URI: ${{ secrets.MONGODB_URI }}
+          BASIC_USER: ${{ secrets.BASIC_USER }}
+          BASIC_PASS: ${{ secrets.BASIC_PASS }}
+        run: npm run test:coverage
+
+  deploy:
+    name: Desplegar Backend (Render)
+    runs-on: ubuntu-latest
+    needs: test
+
+    steps:
+      - name: Deploy Backend a Render
+        run: curl -s "${{ secrets.RENDER_DEPLOY_HOOK }}"
