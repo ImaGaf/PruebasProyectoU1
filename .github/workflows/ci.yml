@@ -3,7 +3,7 @@ name: CI - Pruebas Automáticas
 # Ejecutar el workflow en push y pull requests a las ramas main y develop
 on:
   push:
-    branches: [ main, develop ]
+    branches: [ '**' ]
   pull_request:
     branches: [ main, develop ]
 
