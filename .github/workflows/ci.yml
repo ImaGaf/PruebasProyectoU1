@@ -1,0 +1,53 @@
+name: CI - Pruebas Automáticas
+
+# Ejecutar el workflow en push y pull requests a las ramas main y develop
+on:
+  push:
+    branches: [ '**' ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  test:
+    name: Ejecutar Pruebas y Linting
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Checkout del código
+      - name: Checkout código
+        uses: actions/checkout@v4
+
+      # 2. Configurar Node.js
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # 3. Instalar dependencias
+      - name: Instalar dependencias
+        working-directory: ./Backend
+        run: npm install
+
+      # 4. Ejecutar ESLint
+      - name: Ejecutar ESLint
+        working-directory: ./Backend
+        run: npm run lint
+        continue-on-error: false
+
+      # 5. Ejecutar pruebas con Jest
+      - name: Ejecutar pruebas
+        working-directory: ./Backend
+        run: npm test
+
+      # 6. Ejecutar pruebas con cobertura
+      - name: Ejecutar pruebas con cobertura
+        working-directory: ./Backend
+        run: npm run test:coverage
+
+      # 7. Subir reporte de cobertura (opcional)
+      - name: Subir reporte de cobertura
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: Backend/coverage/
+          retention-days: 30
