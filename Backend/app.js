@@ -36,6 +36,10 @@ app.get("/", (req, res) => {
 const errorHandler = require("./middlewares/errorHandler");
 app.use(errorHandler);
 
-app.listen(port, () => {
-  console.log(`Servidor corriendo en http://localhost:${port}`);
-});
+if (require.main === module) {
+  app.listen(port, () => {
+    console.log(`Servidor corriendo en http://localhost:${port}`);
+  });
+}
+
+module.exports = app;

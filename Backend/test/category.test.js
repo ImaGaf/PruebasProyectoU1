@@ -3,7 +3,6 @@ const express = require("express");
 const dbHandler = require("./dbHandler");
 const Category = require("../models/category");
 
-// Solo mockeamos basicAuth (para no lidiar con autenticación en tests)
 jest.mock("../middlewares/basicAuth", () => (req, res, next) => next());
 
 const categoryRoutes = require("../routes/categoryRoutes");
@@ -26,68 +25,51 @@ describe("Category API (BD real)", () => {
   });
 
   test("GET /api/categories debe devolver lista vacía", async () => {
-    // Arrange (BD vacía)
 
-    // Act
     const res = await request(app).get("/api/categories");
 
-    // Assert
     expect(res.statusCode).toBe(200);
     expect(Array.isArray(res.body)).toBe(true);
     expect(res.body.length).toBe(0);
   });
 
   test("POST /api/categories debe crear una categoría", async () => {
-    // Arrange
+
     const newCategory = { categoryID: 1, name: "Electrónica", description: "Productos electrónicos" };
 
-    // Act
     const res = await request(app).post("/api/categories").send(newCategory);
 
-    // Assert
     expect(res.statusCode).toBe(201);
     expect(res.body).toHaveProperty("_id");
     expect(res.body.name).toBe("Electrónica");
 
-    // Verificar que se guardó en la BD
     const found = await Category.findById(res.body._id);
     expect(found).not.toBeNull();
   });
 
   test("POST /api/categories debe fallar si falta el nombre", async () => {
-    // Arrange
     const invalidCategory = { categoryID: 2, description: "Sin nombre" };
 
-    // Act
     const res = await request(app).post("/api/categories").send(invalidCategory);
 
-    // Assert
     expect(res.statusCode).toBe(400);
     expect(res.body).toHaveProperty("message");
   });
 
   test("GET /api/categories después de crear debe devolver las categorías", async () => {
-    // Arrange
     await Category.create({ categoryID: 10, name: "Ropa", description: "Ropa y accesorios" });
-
-    // Act
     const res = await request(app).get("/api/categories");
-
-    // Assert
     expect(res.statusCode).toBe(200);
     expect(res.body.length).toBeGreaterThan(0);
     expect(res.body.some((c) => c.name === "Ropa")).toBe(true);
   });
 
   test("GET /api/categories permite múltiples categorías", async () => {
-    // Arrange
+
     await Category.create({ categoryID: 20, name: "Deportes", description: "Artículos deportivos" });
     await Category.create({ categoryID: 21, name: "Hogar", description: "Artículos para el hogar" });
 
-    // Act
     const res = await request(app).get("/api/categories");
-
-    // Assert
     expect(res.body.length).toBeGreaterThanOrEqual(2);
     expect(res.body.some((c) => c.name === "Deportes")).toBe(true);
     expect(res.body.some((c) => c.name === "Hogar")).toBe(true);
