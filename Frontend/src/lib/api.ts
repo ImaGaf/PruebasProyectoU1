@@ -1,6 +1,6 @@
 import bcrypt from 'bcryptjs';
 
-const BASE_URL = 'http://localhost:3000/barroco';
+const BASE_URL = import.meta.env.VITE_API_URL || 'https://pruebasproyectou1.onrender.com/barroco';
 
 async function api<T>(endpoint: string, options?: RequestInit): Promise<T> {
   const response = await fetch(`${BASE_URL}${endpoint}`, {

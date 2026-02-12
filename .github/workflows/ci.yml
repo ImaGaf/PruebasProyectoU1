@@ -1,6 +1,5 @@
 name: CI - Pruebas Automáticas
 
-# Ejecutar el workflow en push y pull requests a las ramas main y develop
 on:
   push:
     branches: [ '**' ]
@@ -12,12 +11,15 @@ jobs:
     name: Backend - Pruebas y Linting
     runs-on: ubuntu-latest
 
+    env:
+      MONGODB_URI: ${{ secrets.MONGODB_URI }}
+      BASIC_USER: ${{ secrets.BASIC_USER }}
+      BASIC_PASS: ${{ secrets.BASIC_PASS }}
+
     steps:
-      # 1. Checkout del código
       - name: Checkout código
         uses: actions/checkout@v4
 
-      # 2. Configurar Node.js
       - name: Configurar Node.js
         uses: actions/setup-node@v4
         with:
@@ -32,12 +34,36 @@ jobs:
       - name: Ejecutar ESLint Backend
         working-directory: ./Backend
         run: npm run lint
-        continue-on-error: false
 
       # 5. Ejecutar pruebas con Jest
       - name: Ejecutar pruebas Backend
         working-directory: ./Backend
-        run: npm test
+        run: npm run test:coverage
+
+      - name: Subir reporte de cobertura Backend
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: backend-coverage-report
+          path: Backend/coverage/
+          retention-days: 30
+
+  frontend-tests:
+    name: Frontend - Pruebas y Cobertura
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout código
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Instalar dependencias
+        working-directory: ./Frontend
+        run: npm install
 
       # 6. Ejecutar pruebas con cobertura
       - name: Ejecutar pruebas con cobertura Backend
@@ -47,6 +73,7 @@ jobs:
       # 7. Subir reporte de cobertura Backend
       - name: Subir reporte de cobertura Backend
         uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: backend-coverage-report
           path: Backend/coverage/
