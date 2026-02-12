@@ -12,22 +12,16 @@ jobs:
     name: Ejecutar Pruebas y Linting
     runs-on: ubuntu-latest
 
-    strategy:
-      matrix:
-        node-version: [18.x, 20.x]
-
     steps:
       # 1. Checkout del código
       - name: Checkout código
         uses: actions/checkout@v4
 
       # 2. Configurar Node.js
-      - name: Configurar Node.js ${{ matrix.node-version }}
+      - name: Configurar Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: ${{ matrix.node-version }}
-          cache: 'npm'
-          cache-dependency-path: Backend/package-lock.json
+          node-version: '20'
 
       # 3. Instalar dependencias
       - name: Instalar dependencias
@@ -52,7 +46,6 @@ jobs:
 
       # 7. Subir reporte de cobertura (opcional)
       - name: Subir reporte de cobertura
-        if: matrix.node-version == '20.x'
         uses: actions/upload-artifact@v4
         with:
           name: coverage-report
