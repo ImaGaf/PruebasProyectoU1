@@ -1,240 +1,261 @@
 const request = require("supertest");
 const express = require("express");
+const dbHandler = require("./dbHandler");
+const Product = require("../models/product");
 
-jest.mock("../services/productService");
 jest.mock("../middlewares/basicAuth", () => (req, res, next) => next());
 
-const productService = require("../services/productService");
 const productRoutes = require("../routes/productRoutes");
 
 const app = express();
 app.use(express.json());
 app.use("/api/products", productRoutes);
 
-describe("Rutas de /barroco/products", () => {
-  afterEach(() => {
-    jest.clearAllMocks();
+describe("Product API (BD real)", () => {
+  beforeAll(async () => {
+    await dbHandler.connect();
   });
 
-  // Test GET /productsAvailable
-  test("GET /api/products/productsAvailable debe retornar productos disponibles", async () => {
-    const mockProducts = [
-      { _id: "1", name: "Producto 1", stock: 5, available: true },
-      { _id: "2", name: "Producto 2", stock: 3, available: true },
-    ];
-    productService.getAvailableProducts.mockResolvedValue(mockProducts);
+  afterEach(async () => {
+    await dbHandler.clearDatabase();
+  });
 
+  afterAll(async () => {
+    await dbHandler.closeDatabase();
+  });
+
+  // --- GET /productsAvailable ---
+  test("GET /api/products/productsAvailable debe retornar productos disponibles", async () => {
+    // Arrange
+    await Product.create({ idProduct: "P001", name: "Producto 1", stock: 5, price: 10 });
+    await Product.create({ idProduct: "P002", name: "Producto 2", stock: 0, price: 20 });
+
+    // Act
     const res = await request(app).get("/api/products/productsAvailable");
 
+    // Assert
     expect(res.statusCode).toBe(200);
     expect(Array.isArray(res.body)).toBeTruthy();
-    expect(res.body.every(p => p.available === true)).toBeTruthy();
-    expect(productService.getAvailableProducts).toHaveBeenCalledTimes(1);
+    expect(res.body).toHaveLength(1);
+    expect(res.body[0].name).toBe("Producto 1");
   });
 
-  // Test GET /productsDiscounted
+  // --- GET /productsDiscounted ---
   test("GET /api/products/productsDiscounted debe retornar productos con descuento", async () => {
-    const mockDiscountedProducts = [
-      { idProduct: "1", name: "Producto Personalizado", originalPrice: 100, discountedPrice: 90 },
-    ];
-    productService.getCustomDiscountedProducts.mockResolvedValue(mockDiscountedProducts);
-
-    const res = await request(app).get("/api/products/productsDiscounted");
-
-    expect(res.statusCode).toBe(200);
-    expect(res.body).toEqual(mockDiscountedProducts);
-    expect(productService.getCustomDiscountedProducts).toHaveBeenCalledTimes(1);
-  });
-
-  // Test POST /:idProduct/purchase
-  test("POST /api/products/products/1/purchase debe realizar una compra exitosa", async () => {
-    const mockProduct = { _id: "1", name: "Producto 1", stock: 10 };
-    productService.purchaseProduct.mockResolvedValue({ ...mockProduct, stock: 8 });
-
-    const res = await request(app)
-      .post("/api/products/products/1/purchase")
-      .send({ quantity: 2 });
-
-    expect(res.statusCode).toBe(200);
-    expect(productService.purchaseProduct).toHaveBeenCalledWith("1", 2);
-  });
-
-  // Test GET /
-  test("GET /api/products/ debe retornar todos los productos", async () => {
-    const mockProducts = [
-      { _id: "1", name: "Producto 1" },
-      { _id: "2", name: "Producto 2" },
-    ];
-    productService.getAllProducts.mockResolvedValue(mockProducts);
-
-    const res = await request(app).get("/api/products/");
-
-    expect(res.statusCode).toBe(200);
-    expect(res.body).toEqual(mockProducts);
-    expect(productService.getAllProducts).toHaveBeenCalledTimes(1);
-  });
-
-  // Test GET /:id
-  test("GET /api/products/1 debe retornar un producto existente", async () => {
-    const mockProduct = { _id: "1", name: "Producto 1" };
-    productService.getProductById.mockResolvedValue(mockProduct);
-
-    const res = await request(app).get("/api/products/1");
-
-    expect(res.statusCode).toBe(200);
-    expect(res.body).toEqual(mockProduct);
-    expect(productService.getProductById).toHaveBeenCalledWith("1");
-  });
-
-  test("GET /api/products/999 debe retornar 404 si el producto no existe", async () => {
-    productService.getProductById.mockImplementation(() => {
-      throw new Error("Producto no encontrado");
+    // Arrange
+    await Product.create({
+      idProduct: "P010", name: "Custom Producto", price: 100, stock: 10, custom: true,
     });
 
-    const res = await request(app).get("/api/products/999");
+    // Act
+    const res = await request(app).get("/api/products/productsDiscounted");
 
+    // Assert
+    expect(res.statusCode).toBe(200);
+    expect(res.body).toHaveLength(1);
+    expect(res.body[0].discountedPrice).toBe(90);
+  });
+
+  // --- POST /:idProduct/purchase ---
+  test("POST /api/products/products/P020/purchase debe realizar compra exitosa", async () => {
+    // Arrange
+    await Product.create({ idProduct: "P020", name: "Laptop", stock: 10, price: 500 });
+
+    // Act
+    const res = await request(app)
+      .post("/api/products/products/P020/purchase")
+      .send({ quantity: 2 });
+
+    // Assert
+    expect(res.statusCode).toBe(200);
+    expect(res.body.message).toBe("Compra realizada con éxito");
+    expect(res.body.totalPrice).toBe(1000);
+
+    // Verificar stock en BD
+    const found = await Product.findOne({ idProduct: "P020" });
+    expect(found.stock).toBe(8);
+  });
+
+  // --- GET / ---
+  test("GET /api/products/ debe retornar todos los productos", async () => {
+    // Arrange
+    await Product.create({ idProduct: "P030", name: "Producto A", price: 10, stock: 5 });
+    await Product.create({ idProduct: "P031", name: "Producto B", price: 20, stock: 3 });
+
+    // Act
+    const res = await request(app).get("/api/products/");
+
+    // Assert
+    expect(res.statusCode).toBe(200);
+    expect(res.body).toHaveLength(2);
+  });
+
+  // --- GET /:id ---
+  test("GET /api/products/:id debe retornar un producto existente", async () => {
+    // Arrange
+    const created = await Product.create({ idProduct: "P040", name: "Mouse", price: 25, stock: 50 });
+
+    // Act
+    const res = await request(app).get(`/api/products/${created._id}`);
+
+    // Assert
+    expect(res.statusCode).toBe(200);
+    expect(res.body.name).toBe("Mouse");
+  });
+
+  test("GET /api/products/:id debe retornar 404 si el producto no existe", async () => {
+    // Arrange
+    const fakeId = "507f1f77bcf86cd799439011";
+
+    // Act
+    const res = await request(app).get(`/api/products/${fakeId}`);
+
+    // Assert
     expect(res.statusCode).toBe(404);
     expect(res.body).toEqual({ message: "Producto no encontrado" });
   });
 
-  // Test POST /
+  // --- POST / ---
   test("POST /api/products/ debe crear un producto", async () => {
-    const newProduct = { name: "Nuevo Producto", price: 100, stock: 10 };
-    const createdProduct = { _id: "3", ...newProduct };
-    productService.createProduct.mockResolvedValue(createdProduct);
+    // Arrange
+    const newProduct = { idProduct: "P050", name: "Teclado", price: 60, stock: 20 };
 
-    const res = await request(app)
-      .post("/api/products/")
-      .send(newProduct);
+    // Act
+    const res = await request(app).post("/api/products/").send(newProduct);
 
+    // Assert
     expect(res.statusCode).toBe(201);
-    expect(res.body).toEqual(createdProduct);
-    expect(productService.createProduct).toHaveBeenCalledWith(newProduct);
+    expect(res.body.name).toBe("Teclado");
+
+    const found = await Product.findById(res.body._id);
+    expect(found).not.toBeNull();
   });
 
-  // Test PUT /:id
-  test("PUT /api/products/1 debe actualizar un producto", async () => {
-    const updatedData = { name: "Producto Actualizado", price: 120 };
-    const updatedProduct = {
-      _id: "1",
-      name: "Producto Actualizado",
-      price: 120,
-      stock: 10
-    };
-    productService.updateProduct.mockResolvedValue(updatedProduct);
+  // --- PUT /:id ---
+  test("PUT /api/products/:id debe actualizar un producto", async () => {
+    // Arrange
+    const created = await Product.create({ idProduct: "P060", name: "Monitor", price: 300, stock: 10 });
 
+    // Act
     const res = await request(app)
-      .put("/api/products/1")
-      .send(updatedData);
+      .put(`/api/products/${created._id}`)
+      .send({ name: "Monitor Actualizado", price: 280 });
 
+    // Assert
     expect(res.statusCode).toBe(200);
-    expect(res.body).toEqual(updatedProduct);
-    expect(productService.updateProduct).toHaveBeenCalledWith("1", updatedData);
+    expect(res.body.name).toBe("Monitor Actualizado");
+    expect(res.body.price).toBe(280);
   });
 
-  // Test DELETE /:id
-  test("DELETE /api/products/1 debe eliminar un producto", async () => {
-    const deletedProduct = { _id: "1" };
-    productService.deleteProduct.mockResolvedValue(deletedProduct);
+  // --- DELETE /:id ---
+  test("DELETE /api/products/:id debe eliminar un producto", async () => {
+    // Arrange
+    const created = await Product.create({ idProduct: "P070", name: "Cable", price: 10, stock: 100 });
 
-    const res = await request(app).delete("/api/products/1");
+    // Act
+    const res = await request(app).delete(`/api/products/${created._id}`);
 
+    // Assert
     expect(res.statusCode).toBe(200);
-    expect(res.body).toEqual({ message: "Producto eliminado", product: deletedProduct });
-    expect(productService.deleteProduct).toHaveBeenCalledWith("1");
-    //expect(productService.deleteProduct).toHaveBeenCalledWith("1");//  
+    expect(res.body).toEqual({ message: "Producto eliminado", product: expect.objectContaining({ name: "Cable" }) });
+
+    const found = await Product.findById(created._id);
+    expect(found).toBeNull();
   });
 
-  test("DELETE /api/products/999 debe retornar 404 si el producto no existe", async () => {
-    productService.deleteProduct.mockImplementation(() => {
-      throw new Error("Producto no encontrado");
-    });
+  test("DELETE /api/products/:id debe retornar 404 si no existe", async () => {
+    // Arrange
+    const fakeId = "507f1f77bcf86cd799439011";
 
-    const res = await request(app).delete("/api/products/999");
+    // Act
+    const res = await request(app).delete(`/api/products/${fakeId}`);
 
+    // Assert
     expect(res.statusCode).toBe(404);
     expect(res.body).toHaveProperty("message");
   });
 
-  test("PUT /api/products/999 debe retornar 404 si el producto no existe", async () => {
-    productService.updateProduct.mockImplementation(() => {
-      throw new Error("Producto no encontrado");
-    });
+  test("PUT /api/products/:id debe retornar 404 si no existe", async () => {
+    // Arrange
+    const fakeId = "507f1f77bcf86cd799439011";
 
-    const res = await request(app)
-      .put("/api/products/999")
-      .send({ name: "Test" });
+    // Act
+    const res = await request(app).put(`/api/products/${fakeId}`).send({ name: "Test" });
 
+    // Assert
     expect(res.statusCode).toBe(404);
     expect(res.body).toHaveProperty("message");
   });
 
   test("POST /api/products/ debe manejar errores de validación", async () => {
-    productService.createProduct.mockImplementation(() => {
-      throw new Error("Validation error");
-    });
+    // Arrange - falta idProduct requerido
+    const invalidProduct = { name: "Sin ID" };
 
-    const res = await request(app)
-      .post("/api/products/")
-      .send({ name: "" });
+    // Act
+    const res = await request(app).post("/api/products/").send(invalidProduct);
 
+    // Assert
     expect(res.statusCode).toBe(400);
     expect(res.body).toHaveProperty("message");
   });
 
-  test("POST /api/products/products/1/purchase debe manejar cantidad inválida", async () => {
-    productService.purchaseProduct.mockImplementation(() => {
-      throw new Error("Cantidad inválida");
-    });
+  test("POST /api/products/products/P999/purchase debe manejar cantidad inválida", async () => {
+    // Arrange
+    await Product.create({ idProduct: "P999", name: "Test", price: 10, stock: 5 });
 
+    // Act
     const res = await request(app)
-      .post("/api/products/products/1/purchase")
+      .post("/api/products/products/P999/purchase")
       .send({ quantity: 0 });
 
+    // Assert
     expect(res.statusCode).toBe(400);
     expect(res.body).toHaveProperty("message");
   });
 
-  test("POST /api/products/products/1/purchase debe manejar stock insuficiente", async () => {
-    productService.purchaseProduct.mockImplementation(() => {
-      throw new Error("Stock insuficiente");
-    });
+  test("POST /api/products/products/P100/purchase debe manejar stock insuficiente", async () => {
+    // Arrange
+    await Product.create({ idProduct: "P100", name: "Escaso", price: 50, stock: 2 });
 
+    // Act
     const res = await request(app)
-      .post("/api/products/products/1/purchase")
+      .post("/api/products/products/P100/purchase")
       .send({ quantity: 100 });
 
+    // Assert
     expect(res.statusCode).toBe(400);
     expect(res.body.message).toBe("Stock insuficiente");
   });
 
-  test("GET /api/products/productsAvailable debe manejar errores", async () => {
-    productService.getAvailableProducts.mockImplementation(() => {
-      throw new Error("Database error");
-    });
+  test("GET /api/products/productsAvailable debe manejar array vacío", async () => {
+    // Arrange (BD vacía)
 
+    // Act
     const res = await request(app).get("/api/products/productsAvailable");
 
-    expect(res.statusCode).toBe(500);
-    expect(res.body).toHaveProperty("message");
+    // Assert
+    expect(res.statusCode).toBe(200);
+    expect(res.body).toEqual([]);
   });
 
-  test("GET /api/products/productsDiscounted debe manejar errores", async () => {
-    productService.getCustomDiscountedProducts.mockImplementation(() => {
-      throw new Error("Database error");
-    });
+  test("GET /api/products/productsDiscounted debe manejar array vacío", async () => {
+    // Arrange (BD vacía)
 
+    // Act
     const res = await request(app).get("/api/products/productsDiscounted");
 
-    expect(res.statusCode).toBe(500);
-    expect(res.body).toHaveProperty("message");
+    // Assert
+    expect(res.statusCode).toBe(200);
+    expect(res.body).toEqual([]);
   });
 
   test("GET /api/products/ debe devolver array vacío si no hay productos", async () => {
-    productService.getAllProducts.mockResolvedValue([]);
+    // Arrange (BD vacía)
 
+    // Act
     const res = await request(app).get("/api/products/");
 
+    // Assert
     expect(res.statusCode).toBe(200);
     expect(Array.isArray(res.body)).toBe(true);
     expect(res.body.length).toBe(0);
