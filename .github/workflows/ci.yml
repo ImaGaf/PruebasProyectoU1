@@ -26,7 +26,7 @@ jobs:
       # 3. Instalar dependencias
       - name: Instalar dependencias
         working-directory: ./Backend
-        run: npm ci
+        run: npm install
 
       # 4. Ejecutar ESLint
       - name: Ejecutar ESLint
