@@ -16,7 +16,10 @@ const connect = async () => {
 
 const closeDatabase = async () => {
   if (mongoose.connection.readyState !== 0) {
-    await mongoose.connection.dropDatabase();
+    const collections = mongoose.connection.collections;
+    for (const key in collections) {
+      await collections[key].deleteMany({});
+    }
     await mongoose.disconnect();
   }
 };

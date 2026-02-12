@@ -16,6 +16,10 @@ describe("ShoppingCart API (BD real)", () => {
     await dbHandler.connect();
   });
 
+  beforeEach(async () => {
+    await dbHandler.clearDatabase();
+  });
+
   afterEach(async () => {
     await dbHandler.clearDatabase();
   });
