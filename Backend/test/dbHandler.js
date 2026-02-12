@@ -1,12 +1,16 @@
 const mongoose = require("mongoose");
-require("dotenv").config();
+const path = require("node:path");
+require("dotenv").config({ path: path.resolve(__dirname, "../.env") });
 
 // Usa una BD separada para tests (Barroco_test) para no afectar producción
 const TEST_URI = process.env.MONGODB_URI.replace("/Barroco", "/Barroco_test");
 
 const connect = async () => {
   if (mongoose.connection.readyState === 0) {
-    await mongoose.connect(TEST_URI);
+    await mongoose.connect(TEST_URI, {
+      serverSelectionTimeoutMS: 10000,
+      connectTimeoutMS: 10000,
+    });
   }
 };
 
