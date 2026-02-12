@@ -2,6 +2,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { vi, describe, beforeEach, test, expect, Mock } from 'vitest';
 import StockSection from './StockSection';
 import { productAPI } from '@/lib/api';
+import { error } from 'console';
 
 vi.mock('@/lib/api', () => ({
   productAPI: {
@@ -79,7 +80,7 @@ describe('StockSection', () => {
 
   test('debe manejar errores al actualizar', async () => {
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-    (productAPI.update as Mock).mockRejectedValue(new Error('Error'));
+    (productAPI.update as Mock).mockRejectedValue(new Error('Error al actualizar stock'));
     render(<StockSection />);
     
     await waitFor(() => screen.getByText('Producto Stock'));

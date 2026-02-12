@@ -24,13 +24,16 @@ export default function StockSection() {
   };
 
   const handleEditSubmit = async (e: React.FormEvent) => {
+  try {
     e.preventDefault();
     if (!editId) return;
     await productAPI.update(editId, { stock: editStock });
     toast({ title: "Stock actualizado" });
     setEditId(null);
     fetchProducts();
-  };
+  }catch (error) {
+   console.error("Error al actualizar stock");
+  }};
 
   return (
     <div>
