@@ -26,10 +26,24 @@ export default defineConfig(({ mode }) => ({
     css: true,
     coverage: {
       provider: 'v8',
-      reporter: ['text', 'lcov', 'html'],
+      reporter: ['text', 'html', 'lcov', 'json'],
       reportsDirectory: './coverage',
-      include: ['src/components/**/*.tsx', 'src/lib/**/*.ts', 'src/hooks/**/*.ts'],
-      exclude: ['src/components/ui/**', 'src/**/*.test.tsx', 'src/test/**'],
+      include: ['src/**/*.{ts,tsx}'],
+      exclude: [
+        'src/**/*.test.{ts,tsx}',
+        'src/**/*.spec.{ts,tsx}',
+        'src/test/**',
+        'src/vite-env.d.ts',
+        'src/components/ui/**', // Componentes de shadcn/ui
+        'src/main.tsx',
+      ],
+      all: true,
+      thresholds: {
+        lines: 10,
+        functions: 10,
+        branches: 10,
+        statements: 10,
+      },
     },
   },
 }));
