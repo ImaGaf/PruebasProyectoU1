@@ -8,7 +8,7 @@ on:
 
 jobs:
   test-backend:
-    name: Backend - Pruebas y Linting
+    name: Backend - Pruebas y Cobertura
     runs-on: ubuntu-latest
 
     env:
@@ -25,18 +25,15 @@ jobs:
         with:
           node-version: '20'
 
-      # 3. Instalar dependencias
       - name: Instalar dependencias Backend
         working-directory: ./Backend
         run: npm install
 
-      # 4. Ejecutar ESLint
       - name: Ejecutar ESLint Backend
         working-directory: ./Backend
         run: npm run lint
 
-      # 5. Ejecutar pruebas con Jest
-      - name: Ejecutar pruebas Backend
+      - name: Ejecutar pruebas con cobertura Backend
         working-directory: ./Backend
         run: npm run test:coverage
 
@@ -48,7 +45,7 @@ jobs:
           path: Backend/coverage/
           retention-days: 30
 
-  frontend-tests:
+  test-frontend:
     name: Frontend - Pruebas y Cobertura
     runs-on: ubuntu-latest
 
@@ -61,20 +58,18 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Instalar dependencias
+      - name: Instalar dependencias Frontend
         working-directory: ./Frontend
         run: npm install
 
-      # 6. Ejecutar pruebas con cobertura
-      - name: Ejecutar pruebas con cobertura Backend
-        working-directory: ./Backend
+      - name: Ejecutar pruebas con cobertura Frontend
+        working-directory: ./Frontend
         run: npm run test:coverage
 
-      # 7. Subir reporte de cobertura Backend
-      - name: Subir reporte de cobertura Backend
+      - name: Subir reporte de cobertura Frontend
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: backend-coverage-report
-          path: Backend/coverage/
+          name: frontend-coverage-report
+          path: Frontend/coverage/
           retention-days: 30
