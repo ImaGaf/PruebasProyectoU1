@@ -16,7 +16,7 @@ function buildPayload() {
   const customer = getCustomerIdentifier(user);
 
   return {
-    customer, 
+    customer,
     products: items.map((i) => ({
       idProduct: i.productId,
       quantity: i.quantity,
@@ -39,7 +39,7 @@ function extractCartId(data: ShoppingCartResponse | null | undefined): string | 
 
 async function findCartByCustomerId(customerId: string): Promise<string | null> {
   try {
-    
+
     try {
       const cart = await cartAPI.getByCustomer?.(customerId);
       if (cart) {
@@ -49,9 +49,10 @@ async function findCartByCustomerId(customerId: string): Promise<string | null> 
         }
       }
     } catch (error) {
+      // Silently ignore errors
     }
     return null;
-    
+
   } catch (error) {
     return null;
   }
@@ -61,24 +62,24 @@ async function findCartByCustomerId(customerId: string): Promise<string | null> 
 export async function findOrCreateCartForCustomer(): Promise<string | null> {
   const user = getCurrentUser();
   const customer = getCustomerIdentifier(user);
-  
+
   if (!customer) {
     return null;
   }
 
   try {
     let cartId = await findCartByCustomerId(customer);
-    
+
     if (cartId) {
       sessionStorage.setItem(SHOPPING_CART_ID_KEY, cartId);
       return cartId;
     }
 
     const payload = buildPayload();
-    
+
     const created = await cartAPI.create(payload);
     cartId = extractCartId(created);
-    
+
     if (cartId) {
       sessionStorage.setItem(SHOPPING_CART_ID_KEY, cartId);
       return cartId;
@@ -86,7 +87,7 @@ export async function findOrCreateCartForCustomer(): Promise<string | null> {
 
       return null;
     }
-    
+
   } catch (error) {
     return null;
   }
@@ -95,35 +96,35 @@ export async function findOrCreateCartForCustomer(): Promise<string | null> {
 export async function upsertCartForCurrentUser(): Promise<string | null> {
   const user = getCurrentUser();
   const customer = getCustomerIdentifier(user);
-  
+
   if (!customer) return null;
 
   const payload = buildPayload();
 
   try {
     let cartId = await findCartByCustomerId(customer);
-    
+
     if (cartId) {
       try {
         const updated = await cartAPI.update(cartId, payload);
-        
+
         sessionStorage.setItem(SHOPPING_CART_ID_KEY, cartId);
         return cartId;
       } catch (updateError) {
         cartId = null;
       }
     }
-    
+
     if (!cartId) {
       const created = await cartAPI.create(payload);
       cartId = extractCartId(created);
-      
+
       if (cartId) {
         sessionStorage.setItem(SHOPPING_CART_ID_KEY, cartId);
         return cartId;
       }
     }
-    
+
     return cartId;
   } catch (error) {
     return null;
@@ -133,14 +134,14 @@ export async function upsertCartForCurrentUser(): Promise<string | null> {
 export async function loadCartForCurrentUser(): Promise<void> {
   const user = getCurrentUser();
   const customer = getCustomerIdentifier(user);
-  
+
   if (!customer) {
     return;
   }
 
   try {
     const cartId = await findCartByCustomerId(customer);
-    
+
     if (!cartId) {
       cartStore.clear();
       sessionStorage.removeItem(SHOPPING_CART_ID_KEY);
@@ -150,11 +151,11 @@ export async function loadCartForCurrentUser(): Promise<void> {
     sessionStorage.setItem(SHOPPING_CART_ID_KEY, cartId);
 
     const data = await cartAPI.getById(cartId);
-    
+
     const cartData = data as { product?: any[]; products?: any[] } | undefined;
     const products: Array<{ idProduct: string; quantity: number; price: number; name?: string }> =
-      Array.isArray(cartData?.product) ? cartData.product : 
-      Array.isArray(cartData?.products) ? cartData.products : [];
+      Array.isArray(cartData?.product) ? cartData.product :
+        Array.isArray(cartData?.products) ? cartData.products : [];
 
 
     cartStore.clear();
@@ -171,8 +172,8 @@ export async function loadCartForCurrentUser(): Promise<void> {
     });
 
     sessionStorage.setItem("cart", JSON.stringify(cartStore.getItems()));
-    
-    
+
+
   } catch (error) {
     console.error("Error al cargar carrito:", error);
     cartStore.clear();
@@ -199,12 +200,12 @@ export async function ensureCartExists(): Promise<string | null> {
 export async function clearUserCart(): Promise<void> {
   const user = getCurrentUser();
   const customer = getCustomerIdentifier(user);
-  
+
   cartStore.clear();
-  
+
   sessionStorage.removeItem("cart");
   sessionStorage.removeItem(SHOPPING_CART_ID_KEY);
-  
+
   if (customer) {
     try {
       const cartId = await findCartByCustomerId(customer);
@@ -217,16 +218,16 @@ export async function clearUserCart(): Promise<void> {
   }
 }
 
-export function getCurrentCartInfo(): { 
-  hasCart: boolean; 
-  cartId: string | null; 
-  itemCount: number; 
-  total: number; 
+export function getCurrentCartInfo(): {
+  hasCart: boolean;
+  cartId: string | null;
+  itemCount: number;
+  total: number;
 } {
   const cartId = sessionStorage.getItem(SHOPPING_CART_ID_KEY);
   const items = cartStore.getItems();
   const total = cartStore.getTotal();
-  
+
   return {
     hasCart: !!cartId,
     cartId,
@@ -249,7 +250,7 @@ export async function initializeCart(): Promise<void> {
     await loadCartForCurrentUser();
   } catch (error) {
     console.error("Error al inicializar carrito:", error);
-    
+
     const localCart = sessionStorage.getItem("cart");
     if (localCart) {
       try {
